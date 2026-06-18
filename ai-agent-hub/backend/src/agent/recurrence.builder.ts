@@ -14,13 +14,26 @@ export type RecurrenceIntent =
   | { kind: 'list' }
   | { kind: 'cancel' };
 
+// "recurring" is constantly mistyped (reccuring, recuring, reocurring) — match it
+// loosely (rec+ur+ing / reo?ccur+ing) so a typo never drops the intent.
+const RECURRING_WORD = /\b(rec+ur+ing|reo?ccur+ing|recurrent|scheduled|repeating|standing)\b/i;
+
 // A recurring-schedule marker: "every Friday", "each morning", "daily", "weekly".
 const RECURRING_RE =
-  /\b(every|each)\s+(day|morning|evening|night|afternoon|noon|week|weekday|sunday|monday|tuesday|wednesday|thursday|friday|saturday|sun|mon|tue|tues|wed|thu|thur|thurs|fri|sat)\b|\b(daily|weekly|recurring|every\s*day)\b/i;
+  /\b(every|each)\s+(day|morning|evening|night|afternoon|noon|week|weekday|sunday|monday|tuesday|wednesday|thursday|friday|saturday|sun|mon|tue|tues|wed|thu|thur|thurs|fri|sat)\b|\b(daily|weekly|rec+ur+ing|every\s*day)\b/i;
 
 const STOP = /\b(stop|cancel|end|remove|delete|turn off|disable|unsubscribe)\b/i;
-const LIST =
-  /\b(what|which|show|list|see|view)\b[\s\S]{0,40}\b(recurring|scheduled|schedule|repeating|standing|automatic)\b|\bmy\s+(recurring|scheduled|repeating|standing)\b/i;
+
+// A query about the user's standing tasks, in any common phrasing:
+//   "what are my recurring tasks", "do I have any scheduled orders",
+//   "show my recurring", "list my standing rides", or a bare "recurring tasks".
+function isListIntent(p: string): boolean {
+  return (
+    /\b(rec+ur+ing|reo?ccur+ing|scheduled|repeating|standing)\s+(tasks?|orders?|rides?|stays?|bookings?|trips?|reminders?|deliveries|jobs?)\b/i.test(p) ||
+    /\b(what|which|show|list|see|view|check|do i have|have i got|got any|any|tell me)\b[\s\S]{0,40}\b(rec+ur+ing|reo?ccur+ing|scheduled|schedule|repeating|standing|automatic)\b/i.test(p) ||
+    /\bmy\s+(rec+ur+ing|reo?ccur+ing|scheduled|repeating|standing)\b/i.test(p)
+  );
+}
 
 const WEEKDAYS: { re: RegExp; day: number }[] = [
   { re: /\bsun(day)?\b/i, day: 0 },
@@ -39,7 +52,7 @@ const WEEKDAYS: { re: RegExp; day: number }[] = [
  */
 export function detectRecurrence(prompt: string): RecurrenceIntent | null {
   const hasSchedule = RECURRING_RE.test(prompt);
-  const mentionsRecurring = hasSchedule || /\b(recurring|scheduled|repeating|standing)\b/i.test(prompt);
+  const mentionsRecurring = hasSchedule || RECURRING_WORD.test(prompt);
 
   // Cancel is checked BEFORE list: "stop my recurring ride" contains "my recurring"
   // (which the list pattern also matches), but the STOP verb makes it a cancel.
@@ -48,7 +61,7 @@ export function detectRecurrence(prompt: string): RecurrenceIntent | null {
   }
 
   // "what are my recurring tasks", "list my scheduled orders", "show my recurring"
-  if (LIST.test(prompt) && mentionsRecurring) {
+  if (isListIntent(prompt)) {
     return { kind: 'list' };
   }
 

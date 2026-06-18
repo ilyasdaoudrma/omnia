@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Star, Check, Loader2, CheckCircle2, LogIn, History } from 'lucide-react';
+import { Star, Check, Loader2, CheckCircle2, LogIn, History, UtensilsCrossed } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { Recommendation } from '@/lib/ai/types';
 import { Badge } from '@/components/ui/Badge';
@@ -10,6 +10,33 @@ import { bookStay, orderFood } from '@/lib/market';
 import { useAgentStore } from '@/store/agentStore';
 
 type ActionState = 'idle' | 'loading' | 'done' | 'needAuth' | 'error';
+
+/**
+ * For a restaurant suggestion, ordering blind would just grab the cheapest item
+ * (a bottle of water). Instead this opens the vendor's menu so the user picks —
+ * it asks the agent to "show me the menu of <vendor> in <city>", which renders
+ * the tap-to-order MenuCard.
+ */
+function ShowMenuButton({ rec }: { rec: Recommendation }) {
+  const sendMessage = useAgentStore((s) => s.sendMessage);
+  const isRunning = useAgentStore((s) => s.isRunning);
+  // rec.title is "Green Bowl · Tanger"; subtitle is "Cuisine · City". Take the
+  // vendor base name and the city so the menu resolves to the right location.
+  const base = rec.title.split('·')[0].trim();
+  const city = rec.subtitle?.split('·').pop()?.trim();
+  const open = () => sendMessage(`show me the menu of ${base}${city ? ` in ${city}` : ''}`);
+
+  return (
+    <button
+      onClick={open}
+      disabled={isRunning}
+      className="inline-flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent/[0.08] px-3.5 py-1.5 text-xs font-semibold text-accent-soft transition-all hover:bg-accent/15 hover:scale-[1.03] disabled:opacity-60"
+      data-cursor="hover"
+    >
+      <UtensilsCrossed className="h-3.5 w-3.5" /> Show menu
+    </button>
+  );
+}
 
 function ActionButton({ rec }: { rec: Recommendation }) {
   const [state, setState] = useState<ActionState>('idle');
@@ -54,6 +81,8 @@ function ActionButton({ rec }: { rec: Recommendation }) {
 }
 
 export function RecommendationCard({ rec, compact = false }: { rec: Recommendation; compact?: boolean }) {
+  // Eats suggestions open the menu (pick what to order); stays book the listing.
+  const isEats = rec.marketplace === 'eats';
   const actionable = Boolean(rec.refId && rec.action);
   const { orderedVendorIds, orderedVendorNames } = useAgentStore((s) => s.personalization);
   const orderedBefore =
@@ -126,7 +155,7 @@ export function RecommendationCard({ rec, compact = false }: { rec: Recommendati
           ) : (
             <span />
           )}
-          {actionable && <ActionButton rec={rec} />}
+          {isEats ? <ShowMenuButton rec={rec} /> : actionable && <ActionButton rec={rec} />}
         </div>
       </div>
     </motion.article>

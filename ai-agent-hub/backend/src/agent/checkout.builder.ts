@@ -19,6 +19,9 @@ const logger = new Logger('CheckoutBuilder');
 const ACTION = /\b(order|buy|purchase|grab|book|reserve|i want|i'?ll have|i need|need a|need an|get me|commande|commander|je veux|réserve|reserve)\b/i;
 const FOOD = /(food|eat|dinner|lunch|breakfast|meal|dish|pizza|burger|sushi|tagine|couscous|salad|juice|coke|soda|fries|drink|restaurant|kitchen|combo|menu)/i;
 const STAY = /(\bstay\b|\broom\b|riad|apartment|appartement|villa|studio|hotel|hôtel|guesthouse|loft|\bnights?\b|\bnuits?\b|place to stay|somewhere to stay)/i;
+// Accommodation words that read as a stay only when it's NOT a ride request
+// ("book a home in Casa" → stay; "drive me home", "a car ride home" → ride).
+const HOME_STAY = /\b(home|house|accommodation|accomodation|lodging|airbnb|air\s?bnb)\b/i;
 const RIDE = /(\bride\b|\brides\b|\btaxi\b|\bcab\b|\bcar\b|\bdriver\b|\bchauffeur\b|pick me up|pick-?up|drop ?off|drop me|\blift\b|to the airport|airport transfer|\bmoto\b|\bscooter\b|\btrajet\b|\bsuv\b|\b4x4\b|\bvan\b|\bsedan\b|\bporsche\b|\bcayenne\b|\bbmw\b|\bx6\b|\bmercedes\b|\bglc\b|\bsandero\b|\bdacia\b|\bpeugeot\b|\btucson\b|\bhyundai\b)/i;
 // Whole-trip planning ("plan my trip to Rabat") → assemble stay + meal + ride.
 const TRIP = /\b(full|whole|entire|complete)\s+(trip|weekend|getaway|day|experience)\b|\bplan\b[\s\S]{0,40}\b(trip|weekend|getaway|vacation|holiday|visit|escape)\b|\btrip to\b|\bweekend in\b|\bplan my (visit|stay|day)\b/i;
@@ -366,8 +369,11 @@ export async function buildCheckout(
   // Naming one of our restaurants ("order from Green Bowl") is a food intent even
   // when no word in FOOD/DISHES appears (e.g. "bowl" isn't a dish keyword).
   const promptFood = FOOD.test(prompt) || detectDish(prompt) !== undefined || NAMES_VENDOR_RE.test(prompt);
-  const promptStay = STAY.test(prompt);
   const promptRide = RIDE.test(prompt);
+  // "home"/"house" count as a stay only when it isn't a ride ("a home in Casa" →
+  // stay; "a car ride home" → ride). This keeps a plain "book a home" off the
+  // context-food fallback below, so a stay request never drags in unasked food.
+  const promptStay = STAY.test(prompt) || (HOME_STAY.test(prompt) && !promptRide);
   // Fall back to the wider recent context (which includes the user's prior
   // turns), not just the last reply, so inference doesn't hinge on the exact
   // wording the model happened to use.
@@ -1009,7 +1015,9 @@ async function buildStay(provider: AIProvider, tools: ToolsService, prompt: stri
   const maxPrice = num(prompt, /(?:under|below|max|less than|moins de)\s*(\d{2,5})/i) ?? num(prompt, /(\d{2,5})\s*mad/i);
   // parseGuests handles "1 guest" (singular), word-numbers, and "me and my wife".
   const guests = parseGuests(prompt) ?? parseGuests(combined) ?? 2;
-  const nights = num(prompt, /(\d{1,2})\s*(?:nights?|nuits?)/i) ?? num(combined, /(\d{1,2})\s*(?:nights?|nuits?)/i) ?? 2;
+  // Understands "for a week" (7), "two weeks" (14), "5 nights", "3 days", and
+  // word-numbers — not just a bare "N nights" (which defaulted "a week" to 2).
+  const nights = parseStayNights(prompt) ?? parseStayNights(combined) ?? 2;
 
   const res = await tools.getStaysResult(city, maxPrice, guests);
   if (!res.ok) return { unavailable: 'stays' };
@@ -1131,10 +1139,34 @@ function parseGuests(t: string): number | undefined {
 }
 function parseDays(t: string): number | undefined {
   // [\s-]* so a hyphenated "3-day trip" parses the same as "3 day trip".
-  return num(t, /(\d{1,2})[\s-]*(?:days?|jours?)\b/i);
+  const d = num(t, /(\d{1,2})[\s-]*(?:days?|jours?)\b/i);
+  if (d != null) return d;
+  const w = t.toLowerCase().match(/\b(one|two|three|four|five|six|seven|eight|nine|ten)[\s-]*(?:days?|jours?)\b/);
+  return w ? WORD_NUM[w[1]] : undefined;
 }
 function parseNights(t: string): number | undefined {
-  return num(t, /(\d{1,2})[\s-]*(?:nights?|nuits?)\b/i);
+  const d = num(t, /(\d{1,2})[\s-]*(?:nights?|nuits?)\b/i);
+  if (d != null) return d;
+  const w = t.toLowerCase().match(/\b(one|two|three|four|five|six|seven|eight|nine|ten)[\s-]*(?:nights?|nuits?)\b/);
+  return w ? WORD_NUM[w[1]] : undefined;
+}
+/** Parse a duration given in weeks: "a week"→1, "two weeks"→2, "3 weeks"→3,
+ *  "a fortnight"→2. Returns the number of WEEKS (callers ×7 for nights). */
+function parseWeeks(t: string): number | undefined {
+  if (/\bfortnight\b/i.test(t)) return 2;
+  const d = num(t, /(\d{1,2})[\s-]*weeks?\b/i);
+  if (d != null) return d;
+  const w = t.toLowerCase().match(/\b(one|two|three|four|five|six|seven|eight|nine|ten)[\s-]*weeks?\b/);
+  if (w) return WORD_NUM[w[1]];
+  if (/\ba\s+week\b/i.test(t)) return 1;
+  return undefined;
+}
+/** Nights for a single stay: weeks→×7, else nights, else days (a "7-day stay"
+ *  reads as 7 nights conversationally). Undefined when no duration is stated. */
+function parseStayNights(t: string): number | undefined {
+  const weeks = parseWeeks(t);
+  if (weeks != null) return weeks * 7;
+  return parseNights(t) ?? parseDays(t);
 }
 function parseBudget(t: string): number | undefined {
   return (
@@ -1183,7 +1215,7 @@ function expandBareAnswer(prompt: string, lastAssistant: string): string {
 /** Ask for whatever the trip is still missing (party size first, then nights). */
 function missingTripInfo(text: string): ClarifyRequest | null {
   if (parseGuests(text) == null) return buildTripClarify(text, 'guests');
-  if (parseNights(text) == null && parseDays(text) == null) return buildTripClarify(text, 'nights');
+  if (parseNights(text) == null && parseDays(text) == null && parseWeeks(text) == null) return buildTripClarify(text, 'nights');
   return null;
 }
 
@@ -1218,8 +1250,11 @@ async function buildTrip(
 ): Promise<{ drafts: CheckoutDraft[]; plan?: TripPlan }> {
   const city = extractCity(prompt) ?? matchCity(location?.city ?? '') ?? location?.city;
   const guests = guestsOverride ?? parseGuests(prompt) ?? 2;
-  const explicitDays = parseDays(prompt);
-  const explicitNights = parseNights(prompt);
+  // "a week"/"two weeks" set both day and night counts (7/14…) so a week-long
+  // trip isn't quietly truncated to the 2-night default.
+  const weeks = parseWeeks(prompt);
+  const explicitDays = parseDays(prompt) ?? (weeks != null ? weeks * 7 : undefined);
+  const explicitNights = parseNights(prompt) ?? (weeks != null ? weeks * 7 : undefined);
   const days = explicitDays ?? explicitNights ?? 2;
   // "6 days" → 5 nights (arrive day 1, leave day 6). An explicit nights count wins.
   const nights = explicitNights ?? (explicitDays != null ? Math.max(1, explicitDays - 1) : days);
