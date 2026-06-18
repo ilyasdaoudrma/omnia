@@ -54,7 +54,18 @@ export class RotatingOpenAIProvider implements AIProvider {
       label: maskKey(key),
       // maxRetries: 0 — we own retry/rotation; the SDK's own backoff would just
       // waste time on a key we already know is rate-limited.
-      client: new OpenAI({ apiKey: key, baseURL: options.baseURL, maxRetries: 0 }),
+      //
+      // Accept-Encoding: identity — HF Spaces sit behind a proxy that
+      // intermittently truncates gzipped responses, making node-fetch throw
+      // "Invalid response body ... Premature close" while gunzipping. Asking
+      // Groq for an uncompressed body removes the decompression step entirely,
+      // so a truncation surfaces as a normal (retryable) network error instead.
+      client: new OpenAI({
+        apiKey: key,
+        baseURL: options.baseURL,
+        maxRetries: 0,
+        defaultHeaders: { 'Accept-Encoding': 'identity' },
+      }),
       cooldownUntil: 0,
       disabled: false,
       rotations: 0,
@@ -177,6 +188,15 @@ export class RotatingOpenAIProvider implements AIProvider {
           );
           continue;
         }
+        if (kind === 'transient') {
+          // A dropped/truncated connection (common from HF Spaces → Groq). Not
+          // the key's fault — don't park it; just rotate and retry on the next
+          // ready key. With several keys one attempt almost always gets through.
+          this.logger.warn(
+            `Key ${ks.label} (#${ks.index + 1}) transient network error (${describeError(err)}); rotating to the next key.`,
+          );
+          continue;
+        }
         throw err; // not a key problem — don't burn keys over it
       }
     }
@@ -202,15 +222,17 @@ function maskKey(key: string): string {
   return `${k.slice(0, 4)}…${k.slice(-4)}`;
 }
 
-type ErrorKind = 'exhausted' | 'invalid' | 'other';
+type ErrorKind = 'exhausted' | 'invalid' | 'transient' | 'other';
 
-/** Map a provider error to: spent key (exhausted), bad key (invalid), or unrelated. */
+/** Map a provider error to: spent key (exhausted), bad key (invalid), a retryable
+ *  network blip (transient), or an unrelated failure (other). */
 function classifyError(err: unknown): ErrorKind {
-  const e = err as { status?: number; code?: string; type?: string; message?: string; error?: { code?: string; type?: string } };
+  const e = err as { status?: number; code?: string; type?: string; name?: string; message?: string; cause?: { code?: string; message?: string }; error?: { code?: string; type?: string } };
   const status = e?.status;
-  const code = String(e?.code ?? e?.error?.code ?? '').toLowerCase();
+  const code = String(e?.code ?? e?.cause?.code ?? e?.error?.code ?? '').toLowerCase();
   const type = String(e?.type ?? e?.error?.type ?? '').toLowerCase();
-  const msg = String(e?.message ?? '').toLowerCase();
+  const name = String(e?.name ?? '').toLowerCase();
+  const msg = String(e?.message ?? e?.cause?.message ?? '').toLowerCase();
 
   if (status === 401 || code.includes('invalid_api_key') || msg.includes('invalid api key') || msg.includes('incorrect api key')) {
     return 'invalid';
@@ -226,6 +248,29 @@ function classifyError(err: unknown): ErrorKind {
     msg.includes('limit reached')
   ) {
     return 'exhausted';
+  }
+  // Network/transport failures (no HTTP status): dropped or truncated
+  // connections between the server and Groq. Retryable on another key.
+  if (
+    status === undefined &&
+    (name.includes('apiconnection') ||
+      type === 'system' ||
+      code.includes('econnreset') ||
+      code.includes('etimedout') ||
+      code.includes('econnrefused') ||
+      code.includes('epipe') ||
+      code.includes('enetunreach') ||
+      code.includes('eai_again') ||
+      code.includes('premature') ||
+      msg.includes('premature close') ||
+      msg.includes('socket hang up') ||
+      msg.includes('network') ||
+      msg.includes('fetch failed') ||
+      msg.includes('terminated') ||
+      msg.includes('econnreset') ||
+      msg.includes('timeout'))
+  ) {
+    return 'transient';
   }
   return 'other';
 }
