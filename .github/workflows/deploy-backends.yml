@@ -1,0 +1,62 @@
+name: Deploy backends to Hugging Face Spaces
+
+# On every push to main that touches a backend, sync that backend folder to its
+# Hugging Face Docker Space, which rebuilds and redeploys automatically.
+#
+# One-time setup (see DEPLOY.md):
+#   1. Create 4 Docker Spaces: <HF_USERNAME>/omnia-agent-api, -stays-api, -eats-api, -rides-api
+#   2. Add repo secrets (Settings → Secrets and variables → Actions):
+#        HF_USERNAME  = your Hugging Face username
+#        HF_TOKEN     = a Hugging Face *write* access token
+#   3. Set each Space's env vars/secrets in its own Settings → Variables and secrets.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'ai-agent-hub/backend/**'
+      - 'omnia-stays/backend/**'
+      - 'omnia-eats/backend/**'
+      - 'omnia-rides/backend/**'
+      - '.github/workflows/deploy-backends.yml'
+  workflow_dispatch: {} # allow manual runs from the Actions tab
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - dir: ai-agent-hub/backend
+            space: omnia-agent-api
+          - dir: omnia-stays/backend
+            space: omnia-stays-api
+          - dir: omnia-eats/backend
+            space: omnia-eats-api
+          - dir: omnia-rides/backend
+            space: omnia-rides-api
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Push ${{ matrix.dir }} → HF Space ${{ matrix.space }}
+        env:
+          HF_USERNAME: ${{ secrets.HF_USERNAME }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          set -e
+          if [ -z "$HF_TOKEN" ] || [ -z "$HF_USERNAME" ]; then
+            echo "::error::HF_USERNAME and HF_TOKEN repo secrets are required."; exit 1
+          fi
+          cd "${{ matrix.dir }}"
+          # Make this backend folder its own repo and force-push it as the Space root.
+          # .gitignore here already excludes node_modules / .env / dist, so only source
+          # (+ Dockerfile + README) is sent; HF builds the image and sets secrets itself.
+          rm -rf .git
+          git init -q -b main
+          git config user.email "deploy@github-actions"
+          git config user.name "github-actions"
+          git add -A
+          git commit -q -m "Deploy ${GITHUB_SHA::7} from ${{ github.repository }}"
+          git push -q --force "https://${HF_USERNAME}:${HF_TOKEN}@huggingface.co/spaces/${HF_USERNAME}/${{ matrix.space }}" main
+          echo "Deployed ${{ matrix.space }} ✓"

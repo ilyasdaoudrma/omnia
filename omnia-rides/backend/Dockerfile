@@ -24,6 +24,7 @@ COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=build /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/prisma ./prisma
+COPY --from=build /app/public ./public
 EXPOSE 7860
 HEALTHCHECK --interval=30s --timeout=3s CMD wget -qO- http://localhost:7860/health || exit 1
 CMD ["node", "dist/main.js"]
