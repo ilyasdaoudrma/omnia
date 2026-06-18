@@ -109,9 +109,27 @@ export class RotatingOpenAIProvider implements AIProvider {
       }),
     );
 
-    for await (const chunk of stream) {
-      const delta = chunk.choices[0]?.delta?.content;
-      if (delta) yield delta;
+    let yielded = 0;
+    try {
+      for await (const chunk of stream) {
+        const delta = chunk.choices[0]?.delta?.content;
+        if (delta) {
+          yielded += 1;
+          yield delta;
+        }
+      }
+    } catch (err) {
+      // HF Spaces' egress proxy frequently closes the chunked SSE stream
+      // abnormally at the very end, so node-fetch throws "Premature close"
+      // even though the full answer already streamed. If we've delivered
+      // content and it's a transient transport error, treat the stream as
+      // complete rather than failing the whole (already-answered) request.
+      // Nothing was delivered → let it propagate so the run errors honestly.
+      if (yielded > 0 && classifyError(err) === 'transient') {
+        this.logger.warn(`streamAnswer: tolerated trailing transport close after ${yielded} chunk(s) (${describeError(err)}).`);
+        return;
+      }
+      throw err;
     }
   }
 
