@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import type { User, Ride, RideClass } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { quoteFare } from '../rides/rides.service';
+import { resolveAssetUrl } from '../common/asset-url';
 
 export interface CreateTripInput {
   rideClassId: string;
@@ -99,7 +100,7 @@ function shape(r: Ride & { rideClass: RideClass }) {
     rideClassId: r.rideClassId,
     className: r.rideClass.name,
     vehicle: r.rideClass.vehicle,
-    image: r.rideClass.image,
+    image: resolveAssetUrl(r.rideClass.image),
     pickup: r.pickup,
     dropoff: r.dropoff,
     distanceKm: r.distanceKm,

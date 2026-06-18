@@ -2,8 +2,11 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 // Car photos served by the OMNIA Rides backend itself (public/cars), so they
-// don't depend on the frontend being up.
-const img = (file: string) => `http://localhost:3003/cars/${file}`;
+// don't depend on the frontend being up. The stored origin is rewritten at
+// response time by resolveAssetUrl, so PUBLIC_BASE_URL here is only a sensible
+// default for fresh seeds; deployed hosts override it via env at request time.
+const ASSET_BASE = (process.env.PUBLIC_BASE_URL || 'http://localhost:3003').replace(/\/+$/, '');
+const img = (file: string) => `${ASSET_BASE}/cars/${file}`;
 
 const CITIES = ['Rabat', 'Casablanca', 'Oujda', 'Tanger', 'Marrakech', 'Agadir'];
 

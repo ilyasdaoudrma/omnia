@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import type { Prisma, RideClass } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { resolveAssetUrl } from '../common/asset-url';
 
 const SAMPLE_KM = 8;
 const SAMPLE_MIN = 18;
@@ -46,7 +47,7 @@ function shape(rc: RideClass) {
     etaMinutes: rc.etaMinutes,
     seats: rc.seats,
     rating: rc.rating,
-    image: rc.image,
+    image: resolveAssetUrl(rc.image),
     description: rc.description,
     estFare: quoteFare(rc),
     sampleKm: SAMPLE_KM,
