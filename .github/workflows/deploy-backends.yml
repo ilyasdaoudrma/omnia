@@ -42,8 +42,11 @@ jobs:
 
       - name: Push ${{ matrix.dir }} → HF Space ${{ matrix.space }}
         env:
-          HF_USERNAME: ${{ secrets.HF_USERNAME }}
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          # Split across two HF accounts to fit the free 3-running-Space cap:
+          #   account 2 (HF_*_2): omnia-agent-api + omnia-rides-api
+          #   account 1 (HF_*):   omnia-stays-api + omnia-eats-api
+          HF_USERNAME: ${{ (matrix.space == 'omnia-agent-api' || matrix.space == 'omnia-rides-api') && secrets.HF_USERNAME_2 || secrets.HF_USERNAME }}
+          HF_TOKEN: ${{ (matrix.space == 'omnia-agent-api' || matrix.space == 'omnia-rides-api') && secrets.HF_TOKEN_2 || secrets.HF_TOKEN }}
         run: |
           set -e
           if [ -z "$HF_TOKEN" ] || [ -z "$HF_USERNAME" ]; then
