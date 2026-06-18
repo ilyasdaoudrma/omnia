@@ -57,6 +57,7 @@ jobs:
           git init -q -b main
           git config user.email "deploy@github-actions"
           git config user.name "github-actions"
+          git lfs install --local  # HF Spaces require binary files (e.g. rides car images) via LFS
           git add -A
           git commit -q -m "Deploy ${GITHUB_SHA::7} from ${{ github.repository }}"
           git push -q --force "https://${HF_USERNAME}:${HF_TOKEN}@huggingface.co/spaces/${HF_USERNAME}/${{ matrix.space }}" main

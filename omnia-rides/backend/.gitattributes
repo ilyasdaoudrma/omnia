@@ -1,0 +1,8 @@
+# OMNIA Rides ships car photos (served by the backend at /cars/*). Hugging Face
+# Spaces require binary files via Git LFS / Xet — track the image types as LFS so
+# the deploy push to the Space is accepted.
+*.webp filter=lfs diff=lfs merge=lfs -text
+*.jpg filter=lfs diff=lfs merge=lfs -text
+*.jpeg filter=lfs diff=lfs merge=lfs -text
+*.png filter=lfs diff=lfs merge=lfs -text
+*.avif filter=lfs diff=lfs merge=lfs -text
