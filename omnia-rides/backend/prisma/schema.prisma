@@ -1,0 +1,91 @@
+// OMNIA Rides — standalone database (separate from Stays, Eats and the agent).
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum RideStatus {
+  requested
+  confirmed
+  completed
+  cancelled
+}
+
+// Shared Clerk identity: clerkId is the same across all OMNIA apps.
+model User {
+  id        String   @id @default(cuid())
+  clerkId   String   @unique
+  email     String?
+  firstName String?
+  lastName  String?
+  imageUrl  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  rides     Ride[]
+  reviews   Review[]
+
+  @@map("users")
+}
+
+// A bookable ride tier in a city (Economy, Comfort, Van, Moto, Premium).
+model RideClass {
+  id          String   @id @default(cuid())
+  city        String
+  name        String // "OMNIA Economy"
+  vehicle     String // "Dacia Logan"
+  baseFare    Int // MAD flag-down
+  perKm       Float
+  perMin      Float    @default(0)
+  etaMinutes  Int      @default(4) // pickup ETA
+  seats       Int      @default(4)
+  rating      Float?
+  image       String?
+  description String?
+  createdAt   DateTime @default(now())
+  rides       Ride[]
+  reviewRows  Review[]
+
+  @@index([city])
+  @@map("ride_classes")
+}
+
+model Review {
+  id          String   @id @default(cuid())
+  rideClassId String
+  userId      String
+  authorName  String   @default("Rider")
+  rating      Int // 1..5
+  comment     String?
+  createdAt   DateTime @default(now())
+
+  rideClass RideClass @relation(fields: [rideClassId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([rideClassId])
+  @@map("reviews")
+}
+
+model Ride {
+  id          String     @id @default(cuid())
+  userId      String
+  rideClassId String
+  pickup      String
+  dropoff     String
+  distanceKm  Float      @default(8)
+  minutes     Int        @default(18)
+  fare        Int
+  currency    String     @default("MAD")
+  status      RideStatus @default(confirmed)
+  source      String     @default("web") // "web" | "agent"
+  createdAt   DateTime   @default(now())
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rideClass RideClass @relation(fields: [rideClassId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("rides")
+}

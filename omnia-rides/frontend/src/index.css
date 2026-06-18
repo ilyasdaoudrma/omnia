@@ -1,0 +1,232 @@
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800&family=Geist+Mono:wght@400;500&family=Fraunces:opsz,wght@9..144,400..700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Gentle bob for the scroll cue. */
+@keyframes bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(5px); }
+}
+.animate-bob { animation: bob 1.8s ease-in-out infinite; }
+
+/* ───────────────────────── Design tokens ───────────────────────── */
+:root {
+  --color-bg: #f4faf6;
+  --color-surface: rgba(22, 163, 74, 0.05);
+  --color-border: rgba(15, 23, 42, 0.08);
+  --color-text: #0f172a;
+  --color-text-dim: #475569;
+
+  --accent: #16a34a;
+  --neon-violet: #16a34a;
+  --neon-blue: #15803d;
+  --neon-pink: #22c55e;
+  --neon-cyan: #86efac;
+  --glow: rgba(22, 163, 74, 0.1);
+
+  --ease-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+
+  --duration-fast: 150ms;
+  --duration-normal: 300ms;
+  --duration-slow: 600ms;
+}
+
+@layer base {
+  * {
+    @apply border-white/10;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Lenis controls scroll; disable native smooth when JS smoothing is active. */
+  html.lenis,
+  html.lenis body {
+    height: auto;
+  }
+  .lenis.lenis-smooth {
+    scroll-behavior: auto !important;
+  }
+  .lenis.lenis-stopped {
+    overflow: hidden;
+  }
+
+  body {
+    @apply bg-ink-950 text-[var(--color-text)] font-sans antialiased;
+    margin: 0;
+    overflow-x: hidden;
+    font-feature-settings: 'ss01', 'cv01';
+  }
+
+  ::selection {
+    background: rgba(34, 197, 94, 0.28);
+    color: #0f172a;
+  }
+
+  /* Custom cursor: hide native pointer on devices that have one. */
+  @media (hover: hover) and (pointer: fine) {
+    body.has-custom-cursor,
+    body.has-custom-cursor * {
+      cursor: none;
+    }
+
+    /* Restore the real cursor inside Clerk's account / sign-in UI. */
+    body.has-custom-cursor :is([class^='cl-'], [class*=' cl-']),
+    body.has-custom-cursor :is([class^='cl-'], [class*=' cl-']) * {
+      cursor: auto !important;
+    }
+    body.has-custom-cursor :is([class^='cl-'], [class*=' cl-']) :is(button, a, [role='button']) {
+      cursor: pointer !important;
+    }
+    body.has-custom-cursor :is([class^='cl-'], [class*=' cl-']) :is(input, textarea) {
+      cursor: text !important;
+    }
+  }
+}
+
+@layer components {
+  .glass {
+    background: rgba(255, 255, 255, 0.94);
+    border: 1px solid rgba(15, 23, 42, 0.1);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 10px 34px -16px rgba(15, 23, 42, 0.22);
+    backdrop-filter: blur(20px) saturate(140%);
+    -webkit-backdrop-filter: blur(20px) saturate(140%);
+  }
+
+  .glass-strong {
+    background: rgba(255, 255, 255, 0.985);
+    border: 1px solid rgba(15, 23, 42, 0.1);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95), 0 18px 54px -22px rgba(15, 23, 42, 0.3);
+    backdrop-filter: blur(28px) saturate(160%);
+    -webkit-backdrop-filter: blur(28px) saturate(160%);
+  }
+
+  .text-gradient {
+    background: linear-gradient(110deg, var(--neon-blue), var(--neon-violet) 45%, var(--neon-pink) 70%, var(--neon-violet) 100%);
+    background-size: 220% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: text-sheen 7s ease-in-out infinite alternate;
+  }
+
+  .text-gradient-cool {
+    background: linear-gradient(110deg, var(--neon-cyan), var(--neon-blue) 50%, var(--neon-violet));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* Animated conic border for premium cards/buttons. */
+  .ring-glow {
+    position: relative;
+  }
+  .ring-glow::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    padding: 1px;
+    pointer-events: none;
+    background: conic-gradient(
+      from var(--angle, 0deg),
+      transparent 20%,
+      var(--neon-violet),
+      var(--neon-pink),
+      var(--neon-cyan),
+      transparent 80%
+    );
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: 0;
+    transition: opacity var(--duration-normal) var(--ease-standard);
+  }
+  .ring-glow:hover::before {
+    opacity: 1;
+  }
+}
+
+@layer utilities {
+  /* Film-grain overlay. */
+  .grain::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    pointer-events: none;
+    opacity: 0.025;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* Soft themed spotlight glow behind the hero. */
+  .grain::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background: radial-gradient(58% 42% at 50% -4%, var(--glow), transparent 72%);
+  }
+
+  .mask-fade-y {
+    -webkit-mask-image: linear-gradient(to bottom, transparent, #000 12%, #000 88%, transparent);
+    mask-image: linear-gradient(to bottom, transparent, #000 12%, #000 88%, transparent);
+  }
+
+  .mask-fade-x {
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent);
+    mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent);
+  }
+}
+
+@property --angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+/* Slow sheen sweep across gradient headings. */
+@keyframes text-sheen {
+  from {
+    background-position: 0% center;
+  }
+  to {
+    background-position: 100% center;
+  }
+}
+
+/* Reduced-motion: disable heavy motion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Slim, themed scrollbar. */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(22, 163, 74, 0.3);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(22, 163, 74, 0.5);
+  background-clip: content-box;
+}

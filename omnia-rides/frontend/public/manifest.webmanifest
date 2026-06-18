@@ -1,0 +1,14 @@
+{
+  "name": "OMNIA Rides",
+  "short_name": "OMNIA Rides",
+  "description": "From a Dacia Sandero to a Porsche Cayenne — a driver at your door in seconds.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f4faf6",
+  "theme_color": "#16a34a",
+  "icons": [
+    { "src": "/logo-eye.jpg", "sizes": "192x192", "type": "image/jpeg", "purpose": "any" },
+    { "src": "/logo-eye.jpg", "sizes": "512x512", "type": "image/jpeg", "purpose": "any maskable" }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "name": "omnia-e2e",
+  "private": true,
+  "version": "0.1.0",
+  "description": "End-to-end tests for the OMNIA suite (agent + Stays/Eats/Rides marketplaces).",
+  "type": "module",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:agent": "playwright test agent",
+    "test:market": "playwright test marketplace",
+    "report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0"
+  }
+}

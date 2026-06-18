@@ -1,0 +1,14 @@
+{
+  "name": "OMNIA Eats",
+  "short_name": "OMNIA Eats",
+  "description": "The best local kitchens across Morocco — delivered in a tap.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#fff8f3",
+  "theme_color": "#ea580c",
+  "icons": [
+    { "src": "/logo-eye.jpg", "sizes": "192x192", "type": "image/jpeg", "purpose": "any" },
+    { "src": "/logo-eye.jpg", "sizes": "512x512", "type": "image/jpeg", "purpose": "any maskable" }
+  ]
+}

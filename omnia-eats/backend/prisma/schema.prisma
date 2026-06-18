@@ -1,0 +1,103 @@
+// OMNIA Eats — standalone database (separate from Stays and the agent).
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum OrderStatus {
+  pending
+  preparing
+  delivering
+  delivered
+  cancelled
+}
+
+// Shared Clerk identity: clerkId is the same across all OMNIA apps.
+model User {
+  id        String   @id @default(cuid())
+  clerkId   String   @unique
+  email     String?
+  firstName String?
+  lastName  String?
+  imageUrl  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  orders    Order[]
+  reviews   Review[]
+
+  @@map("users")
+}
+
+model Vendor {
+  id          String     @id @default(cuid())
+  name        String
+  city        String
+  cuisine     String?
+  rating      Float?
+  deliveryFee Int        @default(0)
+  etaMinutes  Int        @default(30)
+  image       String?
+  description String?
+  createdAt   DateTime   @default(now())
+  items       MenuItem[]
+  orders      Order[]
+  reviewRows  Review[]
+
+  @@index([city])
+  @@map("vendors")
+}
+
+model Review {
+  id         String   @id @default(cuid())
+  vendorId   String
+  userId     String
+  authorName String   @default("Guest")
+  rating     Int // 1..5
+  comment    String?
+  createdAt  DateTime @default(now())
+
+  vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([vendorId])
+  @@map("reviews")
+}
+
+model MenuItem {
+  id          String  @id @default(cuid())
+  vendorId    String
+  name        String
+  price       Int
+  description String?
+  image       String?
+  category    String?
+
+  vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@index([vendorId])
+  @@map("menu_items")
+}
+
+model Order {
+  id          String      @id @default(cuid())
+  userId      String
+  vendorId    String
+  items       Json // snapshot: [{ name, price, qty }]
+  subtotal    Int
+  deliveryFee Int         @default(0)
+  total       Int
+  currency    String      @default("MAD")
+  status      OrderStatus @default(preparing)
+  source      String      @default("web") // "web" | "agent"
+  createdAt   DateTime    @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("orders")
+}

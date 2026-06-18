@@ -1,0 +1,14 @@
+{
+  "name": "OMNIA Stays",
+  "short_name": "OMNIA Stays",
+  "description": "Handpicked riads, lofts and villas across Morocco — booked in seconds.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f4f8ff",
+  "theme_color": "#2563eb",
+  "icons": [
+    { "src": "/logo-eye.jpg", "sizes": "192x192", "type": "image/jpeg", "purpose": "any" },
+    { "src": "/logo-eye.jpg", "sizes": "512x512", "type": "image/jpeg", "purpose": "any maskable" }
+  ]
+}

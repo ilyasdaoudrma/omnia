@@ -1,0 +1,93 @@
+// OMNIA Stays — standalone database (separate from Eats and the agent).
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum BookingStatus {
+  pending
+  confirmed
+  cancelled
+}
+
+// Shared Clerk identity: clerkId is the same across all OMNIA apps.
+model User {
+  id        String    @id @default(cuid())
+  clerkId   String    @unique
+  email     String?
+  firstName String?
+  lastName  String?
+  imageUrl  String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  bookings  Booking[]
+  reviews   Review[]
+
+  @@map("users")
+}
+
+model Listing {
+  id            String   @id @default(cuid())
+  title         String
+  city          String
+  neighborhood  String?
+  type          String   @default("Apartment")
+  pricePerNight Int
+  currency      String   @default("MAD")
+  maxGuests     Int      @default(2)
+  bedrooms      Int      @default(1)
+  beds          Int      @default(1)
+  baths         Int      @default(1)
+  rating        Float?
+  reviews       Int      @default(0)
+  amenities     String[]
+  images        String[]
+  description   String?
+  host          String   @default("OMNIA Host")
+  createdAt     DateTime @default(now())
+  bookings      Booking[]
+  reviewRows    Review[]
+
+  @@index([city])
+  @@map("listings")
+}
+
+model Review {
+  id         String   @id @default(cuid())
+  listingId  String
+  userId     String
+  authorName String   @default("Guest")
+  rating     Int // 1..5
+  comment    String?
+  createdAt  DateTime @default(now())
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([listingId])
+  @@map("reviews")
+}
+
+model Booking {
+  id        String        @id @default(cuid())
+  userId    String
+  listingId String
+  nights    Int           @default(1)
+  guests    Int           @default(1)
+  total     Int
+  currency  String        @default("MAD")
+  status    BookingStatus @default(confirmed)
+  checkIn   DateTime?
+  source    String        @default("web") // "web" | "agent"
+  createdAt DateTime      @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("bookings")
+}

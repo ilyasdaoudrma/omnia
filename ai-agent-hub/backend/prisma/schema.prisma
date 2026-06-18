@@ -1,0 +1,325 @@
+// AI Agent Hub — data model
+// PostgreSQL + Prisma. Mirrors the frontend types in web/src/lib/ai/types.ts.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ───────────────────────────── Enums ─────────────────────────────
+
+enum Role {
+  user
+  assistant
+  system
+}
+
+enum StepStatus {
+  pending
+  running
+  done
+  error
+}
+
+enum ToolId {
+  travel
+  maps
+  restaurant
+  shopping
+  calendar
+  notification
+}
+
+enum ActionStatus {
+  proposed
+  approved
+  executing
+  completed
+  failed
+  cancelled
+}
+
+enum BookingStatus {
+  pending
+  confirmed
+  cancelled
+}
+
+enum NotificationTone {
+  accent
+  success
+  warn
+}
+
+enum RecurrenceCadence {
+  daily
+  weekly
+}
+
+// ───────────────────────────── Models ─────────────────────────────
+
+model User {
+  id        String   @id @default(cuid())
+  clerkId   String   @unique
+  email     String?  @unique
+  firstName String?
+  lastName  String?
+  imageUrl  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  conversations     Conversation[]
+  itineraries       Itinerary[]
+  bookings          Booking[]
+  notifications     Notification[]
+  connectedAccounts ConnectedAccount[]
+  agentActions      AgentAction[]
+
+  @@map("users")
+}
+
+model Conversation {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String   @default("New conversation")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages Message[]
+  tasks    Task[]
+
+  @@index([userId])
+  @@map("conversations")
+}
+
+model Message {
+  id             String   @id @default(cuid())
+  conversationId String
+  role           Role
+  content        String
+  // Structured recommendations attached to an assistant message.
+  recommendations Json?
+  createdAt      DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@map("messages")
+}
+
+model Task {
+  id             String     @id @default(cuid())
+  conversationId String
+  title          String
+  tool           ToolId
+  status         StepStatus @default(pending)
+  order          Int        @default(0)
+  createdAt      DateTime   @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@map("tasks")
+}
+
+model Itinerary {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  location  String?
+  startDate DateTime?
+  endDate   DateTime?
+  budget    Int?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user  User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items ItineraryItem[]
+
+  @@index([userId])
+  @@map("itineraries")
+}
+
+model ItineraryItem {
+  id          String   @id @default(cuid())
+  itineraryId String
+  day         Int
+  time        String
+  title       String
+  detail      String?
+  tool        ToolId
+  cost        Int?
+  order       Int      @default(0)
+
+  itinerary Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
+
+  @@index([itineraryId])
+  @@map("itinerary_items")
+}
+
+model AgentAction {
+  id        String       @id @default(cuid())
+  userId    String
+  tool      ToolId
+  summary   String
+  payload   Json?
+  status    ActionStatus @default(proposed)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("agent_actions")
+}
+
+model ConnectedAccount {
+  id        String   @id @default(cuid())
+  userId    String
+  provider  String // e.g. "airbnb", "uber", "glovo"
+  label     String?
+  scopes    String[]
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, provider])
+  @@map("connected_accounts")
+}
+
+model Booking {
+  id        String        @id @default(cuid())
+  userId    String
+  tool      ToolId
+  title     String
+  vendor    String?
+  total     Int?
+  currency  String        @default("MAD")
+  status    BookingStatus @default(pending)
+  details   Json?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("bookings")
+}
+
+// ───────────────────── OMNIA owned marketplaces ─────────────────────
+
+model StayListing {
+  id            String   @id @default(cuid())
+  title         String
+  city          String
+  country       String?
+  neighborhood  String?
+  pricePerNight Int
+  currency      String   @default("MAD")
+  maxGuests     Int      @default(2)
+  bedrooms      Int      @default(1)
+  rating        Float?
+  amenities     String[]
+  image         String?
+  description   String?
+  createdAt     DateTime @default(now())
+
+  @@index([city])
+  @@map("stay_listings")
+}
+
+model FoodVendor {
+  id          String         @id @default(cuid())
+  name        String
+  city        String
+  cuisine     String?
+  rating      Float?
+  deliveryFee Int            @default(0)
+  etaMinutes  Int            @default(30)
+  image       String?
+  createdAt   DateTime       @default(now())
+  items       FoodMenuItem[]
+
+  @@index([city])
+  @@map("food_vendors")
+}
+
+model FoodMenuItem {
+  id          String  @id @default(cuid())
+  vendorId    String
+  name        String
+  price       Int
+  description String?
+  image       String?
+
+  vendor FoodVendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@index([vendorId])
+  @@map("food_menu_items")
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  title     String
+  body      String
+  tone      NotificationTone @default(accent)
+  read      Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("notifications")
+}
+
+// ───────────────────── Recurring agent tasks ─────────────────────
+// A standing instruction the agent fires on a schedule — e.g. "order my usual
+// every Friday", "book my usual ride every morning". The resolved drafts are
+// stored as a snapshot and re-priced against live inventory at each firing.
+// Owned by clerkId (no FK to User so it works for any signed-in identity); the
+// scheduler places the order/booking/ride server-side via the trusted agent
+// service path on each marketplace.
+model Recurrence {
+  id          String            @id @default(cuid())
+  clerkId     String
+  prompt      String // original natural-language request
+  label       String // human summary, e.g. "Order from Dar Tagine"
+  marketplace String? // primary marketplace for display: eats | stays | rides
+  drafts      Json // CheckoutDraft[] snapshot to replay
+  cadence     RecurrenceCadence @default(weekly)
+  weekday     Int? // 0=Sun..6=Sat, for weekly
+  hour        Int               @default(9) // local hour to fire (0-23)
+  minute      Int               @default(0)
+  active      Boolean           @default(true)
+  nextRunAt   DateTime
+  lastRunAt   DateTime?
+  lastStatus  String? // placed | partial | failed
+  runCount    Int               @default(0)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@index([clerkId])
+  @@index([active, nextRunAt])
+  @@map("recurrences")
+}
+
+/// Per-user (or per-IP) daily agent-request counter. Persisted so the daily cap
+/// survives backend restarts — important on free hosts (e.g. HF Spaces) that sleep
+/// and restart, which would otherwise reset an in-memory counter and leak quota.
+/// One row per bucket per UTC calendar day; the count is incremented per /agent/run.
+model AgentUsage {
+  id        String   @id @default(cuid())
+  bucketKey String // "user:<clerkSub>" when signed in, else "ip:<addr>"
+  day       String // UTC calendar day, "YYYY-MM-DD"
+  count     Int      @default(0)
+  updatedAt DateTime @updatedAt
+
+  @@unique([bucketKey, day])
+  @@map("agent_usage")
+}
