@@ -1,0 +1,90 @@
+# Render Blueprint — the 4 OMNIA backends as free web services.
+# Render → New → Blueprint → pick this repo → it creates all four at once.
+# Secrets + cross-service URLs are `sync: false` (you set them per service; the
+# agent assistant can also set the URL/CORS ones for you via the Render API).
+# Render injects PORT automatically; the apps already read process.env.PORT.
+
+services:
+  # ── Agent (gold/black AI concierge) ──
+  - type: web
+    name: omnia-agent-api
+    runtime: node
+    plan: free
+    region: frankfurt
+    rootDir: ai-agent-hub/backend
+    buildCommand: npm install --include=dev && npx prisma generate && npm run build
+    startCommand: node dist/main.js
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - { key: NODE_ENV, value: production }
+      - { key: AI_PROVIDER, value: groq }
+      - { key: NODE_VERSION, value: "22" }
+      - { key: DATABASE_URL, sync: false }
+      - { key: CLERK_SECRET_KEY, sync: false }
+      - { key: GROQ_API_KEYS, sync: false }
+      - { key: OMNIA_AGENT_SECRET, sync: false }
+      - { key: STAYS_API_URL, sync: false }
+      - { key: EATS_API_URL, sync: false }
+      - { key: RIDES_API_URL, sync: false }
+      - { key: CORS_ORIGINS, sync: false }
+
+  # ── Stays (blue) ──
+  - type: web
+    name: omnia-stays-api
+    runtime: node
+    plan: free
+    region: frankfurt
+    rootDir: omnia-stays/backend
+    buildCommand: npm install --include=dev && npx prisma generate && npm run build
+    startCommand: node dist/main.js
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - { key: NODE_ENV, value: production }
+      - { key: NODE_VERSION, value: "22" }
+      - { key: DATABASE_URL, sync: false }
+      - { key: CLERK_SECRET_KEY, sync: false }
+      - { key: CLERK_PUBLISHABLE_KEY, sync: false }
+      - { key: OMNIA_AGENT_SECRET, sync: false }
+      - { key: CORS_ORIGINS, sync: false }
+
+  # ── Eats (orange) ──
+  - type: web
+    name: omnia-eats-api
+    runtime: node
+    plan: free
+    region: frankfurt
+    rootDir: omnia-eats/backend
+    buildCommand: npm install --include=dev && npx prisma generate && npm run build
+    startCommand: node dist/main.js
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - { key: NODE_ENV, value: production }
+      - { key: NODE_VERSION, value: "22" }
+      - { key: DATABASE_URL, sync: false }
+      - { key: CLERK_SECRET_KEY, sync: false }
+      - { key: CLERK_PUBLISHABLE_KEY, sync: false }
+      - { key: OMNIA_AGENT_SECRET, sync: false }
+      - { key: CORS_ORIGINS, sync: false }
+
+  # ── Rides (green) — ships car photos from public/cars ──
+  - type: web
+    name: omnia-rides-api
+    runtime: node
+    plan: free
+    region: frankfurt
+    rootDir: omnia-rides/backend
+    buildCommand: npm install --include=dev && npx prisma generate && npm run build
+    startCommand: node dist/main.js
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - { key: NODE_ENV, value: production }
+      - { key: NODE_VERSION, value: "22" }
+      - { key: DATABASE_URL, sync: false }
+      - { key: CLERK_SECRET_KEY, sync: false }
+      - { key: CLERK_PUBLISHABLE_KEY, sync: false }
+      - { key: OMNIA_AGENT_SECRET, sync: false }
+      - { key: CORS_ORIGINS, sync: false }
