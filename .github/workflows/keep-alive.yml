@@ -1,0 +1,29 @@
+name: Keep backends awake
+
+# Pings every backend's /health on a schedule so the free HF Spaces don't go to
+# sleep — keeps the live demo fast for visitors (no cold start on the first click).
+# Runs on GitHub's infra (free for public repos). You can also run it manually from
+# the Actions tab. Note: GitHub auto-disables scheduled workflows after ~60 days of
+# repo inactivity — just re-enable it from the Actions tab if that ever happens.
+
+on:
+  schedule:
+    - cron: "*/15 * * * *" # every 15 minutes
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping all 4 backends
+        run: |
+          urls=(
+            "https://ilyashunter55-omnia-agent-api.hf.space/health"
+            "https://ilyashunter55-omnia-rides-api.hf.space/health"
+            "https://ilyasdaoud-omnia-stays-api.hf.space/health"
+            "https://ilyasdaoud-omnia-eats-api.hf.space/health"
+          )
+          for u in "${urls[@]}"; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 40 "$u" || echo "000")
+            echo "$u -> $code"
+          done
