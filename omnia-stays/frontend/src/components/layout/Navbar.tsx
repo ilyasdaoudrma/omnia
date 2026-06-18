@@ -9,7 +9,7 @@ import { authEnabled } from '@/lib/auth';
 import { cn } from '@/lib/utils';
 import { useT } from '@/lib/i18n';
 
-const AGENT_URL = 'http://localhost:5180';
+const AGENT_URL = import.meta.env.VITE_AGENT_URL ?? 'http://localhost:5180';
 const ACCOUNT_PATH = '/trips';
 
 function AuthButtons() {

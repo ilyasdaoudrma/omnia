@@ -9,10 +9,12 @@ import { cn } from '@/lib/utils';
 import { useT } from '@/lib/i18n';
 import { AuthControls } from './AuthControls';
 
+// Cross-app links use the deployed marketplace URLs in production (set the VITE_*_URL
+// envs); they fall back to the local dev ports. Same env vars as lib/market.ts.
 const LINKS = [
-  { key: 'nav.stays', to: 'http://localhost:5181' },
-  { key: 'nav.eats', to: 'http://localhost:5182' },
-  { key: 'nav.rides', to: 'http://localhost:5183' },
+  { key: 'nav.stays', to: import.meta.env.VITE_STAYS_URL ?? 'http://localhost:5181' },
+  { key: 'nav.eats', to: import.meta.env.VITE_EATS_URL ?? 'http://localhost:5182' },
+  { key: 'nav.rides', to: import.meta.env.VITE_RIDES_URL ?? 'http://localhost:5183' },
   { key: 'nav.dashboard', to: '/dashboard' },
 ];
 
