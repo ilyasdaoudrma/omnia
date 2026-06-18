@@ -26,6 +26,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
+      max-parallel: 1 # push Spaces one at a time — HF rate-limits parallel git pushes (429)
       matrix:
         include:
           - dir: ai-agent-hub/backend
