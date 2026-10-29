@@ -7,8 +7,7 @@ name: Keep backends awake
 # repo inactivity — just re-enable it from the Actions tab if that ever happens.
 
 on:
-  schedule:
-    - cron: "*/15 * * * *" # every 15 minutes
+  # Backends moved to Vercel, which does not sleep; manual runs only.
   workflow_dispatch: {}
 
 jobs:

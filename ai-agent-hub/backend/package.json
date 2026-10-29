@@ -14,7 +14,8 @@
     "prisma:seed": "ts-node prisma/seed.ts",
     "prisma:seed:market": "ts-node prisma/seed-marketplace.ts",
     "prisma:studio": "prisma studio",
-    "e2e": "node scripts/e2e-agent.mjs"
+    "e2e": "node scripts/e2e-agent.mjs",
+    "postinstall": "prisma generate"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"

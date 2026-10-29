@@ -11,15 +11,8 @@ name: Deploy backends to Hugging Face Spaces
 #   3. Set each Space's env vars/secrets in its own Settings → Variables and secrets.
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'ai-agent-hub/backend/**'
-      - 'omnia-stays/backend/**'
-      - 'omnia-eats/backend/**'
-      - 'omnia-rides/backend/**'
-      - '.github/workflows/deploy-backends.yml'
-  workflow_dispatch: {} # allow manual runs from the Actions tab
+  # Backends now deploy to Vercel (HF Spaces Docker is no longer free); manual runs only.
+  workflow_dispatch: {}
 
 jobs:
   deploy:
