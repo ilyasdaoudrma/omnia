@@ -33,7 +33,7 @@ export class AIService {
       // The rotating provider auto-fails-over across as many free-tier keys as
       // are supplied (GROQ_API_KEYS / GROQ_API_KEY / GROQ_API_KEY_1..10).
       const cooldownMs = Number(config.get<string>('GROQ_KEY_COOLDOWN_MS')) || undefined;
-      this.groqPool = new RotatingOpenAIProvider(groqKeys, config.get<string>('GROQ_MODEL') ?? 'llama-3.3-70b-versatile', {
+      this.groqPool = new RotatingOpenAIProvider(groqKeys, config.get<string>('GROQ_MODEL') ?? 'openai/gpt-oss-120b', {
         baseURL: 'https://api.groq.com/openai/v1',
         id: 'groq',
         cooldownMs,
