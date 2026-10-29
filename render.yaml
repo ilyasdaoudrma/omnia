@@ -10,7 +10,7 @@ services:
     name: omnia-agent-api
     runtime: node
     plan: free
-    region: frankfurt
+    region: virginia
     rootDir: ai-agent-hub/backend
     buildCommand: npm install --include=dev && npx prisma generate && npm run build
     startCommand: node dist/main.js
@@ -34,7 +34,7 @@ services:
     name: omnia-stays-api
     runtime: node
     plan: free
-    region: frankfurt
+    region: virginia
     rootDir: omnia-stays/backend
     buildCommand: npm install --include=dev && npx prisma generate && npm run build
     startCommand: node dist/main.js
@@ -54,7 +54,7 @@ services:
     name: omnia-eats-api
     runtime: node
     plan: free
-    region: frankfurt
+    region: virginia
     rootDir: omnia-eats/backend
     buildCommand: npm install --include=dev && npx prisma generate && npm run build
     startCommand: node dist/main.js
@@ -74,7 +74,7 @@ services:
     name: omnia-rides-api
     runtime: node
     plan: free
-    region: frankfurt
+    region: virginia
     rootDir: omnia-rides/backend
     buildCommand: npm install --include=dev && npx prisma generate && npm run build
     startCommand: node dist/main.js
